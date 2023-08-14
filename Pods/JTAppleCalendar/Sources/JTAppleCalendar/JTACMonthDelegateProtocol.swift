@@ -44,7 +44,8 @@ protocol JTACMonthDelegateProtocol: AnyObject {
     // Functions
     func pathsFromDates(_ dates: [Date]) -> [IndexPath]
     func sizeOfDecorationView(indexPath: IndexPath) -> CGRect
-    func sizesForMonthSection() -> [AnyHashable:CGFloat]
+    func headerSizesForMonthSection() -> [AnyHashable:CGFloat]
+    func footerSizesForMonthSection() -> [AnyHashable:CGFloat]
     func targetPointForItemAt(indexPath: IndexPath, preferredScrollPosition: UICollectionView.ScrollPosition?) -> CGPoint?
 }
 

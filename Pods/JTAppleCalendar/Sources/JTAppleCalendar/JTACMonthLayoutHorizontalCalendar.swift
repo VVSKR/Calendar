@@ -32,13 +32,20 @@ extension JTACMonthLayout {
         endSeparator = sectionInset.left + sectionInset.right
         
         for aMonth in monthInfo {
+            var footerXOffset: CGFloat = .zero
             for numberOfDaysInCurrentSection in aMonth.sections {
                 // Generate and cache the headers
-                if let aHeaderAttr = determineToApplySupplementaryAttribs(0, section: virtualSection) {
-                    headerCache[virtualSection] = aHeaderAttr
+                if let aSupplementaryAttr = determineToApplySupplementaryAttribs(0, section: virtualSection) {
+                    headerCache[virtualSection] = (item: aSupplementaryAttr.item,
+                                                   section: aSupplementaryAttr.section,
+                                                   xOffset: aSupplementaryAttr.xOffset,
+                                                   yOffset: aSupplementaryAttr.yOffset,
+                                                   width: aSupplementaryAttr.width,
+                                                   height: aSupplementaryAttr.headerHeight)
                     if strictBoundaryRulesShouldApply {
-                        contentWidth += aHeaderAttr.width
-                        yCellOffset = aHeaderAttr.height
+                        footerXOffset += aSupplementaryAttr.xOffset
+                        contentWidth += aSupplementaryAttr.width
+                        yCellOffset = aSupplementaryAttr.headerHeight
                     }
                 }
                 // Generate and cache the cells
@@ -74,6 +81,18 @@ extension JTACMonthLayout {
                                 yCellOffset += attribute.height
                             }
                         }
+                    }
+                }
+
+                if let aSupplementaryAttr = determineToApplySupplementaryAttribs(0, section: virtualSection) {
+                    footerCache[virtualSection] = (item: aSupplementaryAttr.item,
+                                                   section: aSupplementaryAttr.section,
+                                                   xOffset: footerXOffset,
+                                                   yOffset: yCellOffset,
+                                                   width: aSupplementaryAttr.width,
+                                                   height: aSupplementaryAttr.footerHeight)
+                    if strictBoundaryRulesShouldApply {
+                        yCellOffset += aSupplementaryAttr.footerHeight
                     }
                 }
                 

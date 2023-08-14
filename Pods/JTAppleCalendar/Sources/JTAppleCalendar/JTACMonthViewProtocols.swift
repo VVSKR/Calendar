@@ -134,6 +134,14 @@ public protocol JTACMonthViewDelegate: AnyObject {
     ///     - date: The date attached to the header.
     ///     - indexPath: use this value when dequeing cells
     func calendar(_ calendar: JTACMonthView, headerViewForDateRange range: (start: Date, end: Date), at indexPath: IndexPath) -> JTACMonthReusableView
+
+    /// Tells the delegate that the JTAppleCalendar is about to
+    /// display a footer. This is the point of customization for your footers
+    /// - Parameters:
+    ///     - calendar: The JTAppleCalendar view giving this information.
+    ///     - date: The date attached to the header.
+    ///     - indexPath: use this value when dequeing cells
+    func calendar(_ calendar: JTACMonthView, footerViewForDateRange range: (start: Date, end: Date), at indexPath: IndexPath) -> JTACMonthReusableView
     
     /// Informs the delegate that the user just lifted their finger from swiping the calendar
     func scrollDidEndDecelerating(for calendar: JTACMonthView)
@@ -142,7 +150,10 @@ public protocol JTACMonthViewDelegate: AnyObject {
     func calendarDidScroll(_ calendar: JTACMonthView)
     
     /// Called to retrieve the size to be used for the month headers
-    func calendarSizeForMonths(_ calendar: JTACMonthView?) -> MonthSize?
+    func calendarHeaderSizeForMonths(_ calendar: JTACMonthView?) -> MonthSize?
+
+    /// Called to retrieve the size to be used for the month footers
+    func calendarFooterSizeForMonths(_ calendar: JTACMonthView?) -> MonthSize?
     
     /// Implement the function to configure calendar cells. The code that will go in here is the same
     /// that you will code for your cellForItem function. This function is only called to address
@@ -174,8 +185,13 @@ public extension JTACMonthViewDelegate {
         assert(false, "You have implemted a header size function, but forgot to implement the `headerViewForDateRange` function")
         return JTACMonthReusableView()
     }
+    func calendar(_ calendar: JTACMonthView, footerViewForDateRange range: (start: Date, end: Date), at indexPath: IndexPath) -> JTACMonthReusableView {
+        assert(false, "You have implemted a footer size function, but forgot to implement the `footerViewForDateRange` function")
+        return JTACMonthReusableView()
+    }
     func calendarDidScroll(_ calendar: JTACMonthView) {}
-    func calendarSizeForMonths(_ calendar: JTACMonthView?) -> MonthSize? { return nil }
+    func calendarHeaderSizeForMonths(_ calendar: JTACMonthView?) -> MonthSize? { return nil }
+    func calendarFooterSizeForMonths(_ calendar: JTACMonthView?) -> MonthSize? { return nil}
     func sizeOfDecorationView(indexPath: IndexPath) -> CGRect { return .zero }
     func scrollDidEndDecelerating(for calendar: JTACMonthView) {}
 }

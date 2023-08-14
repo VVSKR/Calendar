@@ -35,10 +35,23 @@ extension JTACMonthView: UICollectionViewDelegate, UICollectionViewDataSource {
                 assert(false, "Date could not be generated for section. This is a bug. Contact the developer")
                 return UICollectionReusableView()
         }
-        
-        let headerView = delegate.calendar(self, headerViewForDateRange: validDate.range, at: indexPath)
-        headerView.transform.a = semanticContentAttribute == .forceRightToLeft ? -1 : 1
-        return headerView
+        let view: JTACMonthReusableView
+        if kind == UICollectionView.elementKindSectionHeader {
+            view = delegate.calendar(self, headerViewForDateRange: validDate.range, at: indexPath)
+        } else if kind == UICollectionView.elementKindSectionFooter {
+            view = delegate.calendar(self, footerViewForDateRange: validDate.range, at: indexPath)
+        } else {
+            view = JTACMonthReusableView()
+        }
+        view.transform.a = semanticContentAttribute == .forceRightToLeft ? -1 : 1
+        return view
+    }
+
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, referenceSizeForHeaderInSection section: Int) -> CGSize {
+        return CGSize(width: collectionView.frame.width, height: 180.0)
+    }
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, referenceSizeForFooterInSection section: Int) -> CGSize {
+        return CGSize(width: 60.0, height: 30.0)
     }
     
     public func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {

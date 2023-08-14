@@ -39,6 +39,7 @@ class JTACMonthLayout: UICollectionViewLayout, JTACMonthLayoutProtocol {
     var maxMissCount: Int = 0
     var cellCache: [Int: [(item: Int, section: Int, xOffset: CGFloat, yOffset: CGFloat, width: CGFloat, height: CGFloat)]] = [:]
     var headerCache: [Int: (item: Int, section: Int, xOffset: CGFloat, yOffset: CGFloat, width: CGFloat, height: CGFloat)] = [:]
+    var footerCache: [Int: (item: Int, section: Int, xOffset: CGFloat, yOffset: CGFloat, width: CGFloat, height: CGFloat)] = [:]
     var decorationCache: [IndexPath:UICollectionViewLayoutAttributes] = [:]
     var endOfSectionOffsets: [CGFloat] = []
     var lastWrittenCellAttribute: (Int, Int, CGFloat, CGFloat, CGFloat, CGFloat)!
@@ -47,6 +48,7 @@ class JTACMonthLayout: UICollectionViewLayout, JTACMonthLayoutProtocol {
     var minimumLineSpacing: CGFloat = 0
     var sectionInset = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
     var headerSizes: [AnyHashable:CGFloat] = [:]
+    var footerSizes: [AnyHashable:CGFloat] = [:]
     var focusIndexPath: IndexPath?
     var isCalendarLayoutLoaded: Bool { return !cellCache.isEmpty }
     var layoutIsReadyToBePrepared: Bool { return !(!cellCache.isEmpty  || delegate.calendarDataSource == nil) }
@@ -55,6 +57,7 @@ class JTACMonthLayout: UICollectionViewLayout, JTACMonthLayoutProtocol {
     var numberOfRows: Int = 0
     var strictBoundaryRulesShouldApply: Bool = false
     var thereAreHeaders: Bool { return !headerSizes.isEmpty }
+    var thereAreFooters: Bool { return !footerSizes.isEmpty }
     var thereAreDecorationViews = false
     
     weak var delegate: JTACMonthDelegateProtocol!
@@ -150,6 +153,10 @@ class JTACMonthLayout: UICollectionViewLayout, JTACMonthLayoutProtocol {
         if !thereAreHeaders {
             headerCache.removeAll()
         }
+
+        if !thereAreFooters {
+            footerCache.removeAll()
+        }
         
         // Set the first content offset only once. This will prevent scrolling animation on viewDidload.
         if !firstContentOffsetWasSet {
@@ -164,8 +171,9 @@ class JTACMonthLayout: UICollectionViewLayout, JTACMonthLayoutProtocol {
     
     func setupDataFromDelegate() {
         // get information from the delegate
-        headerSizes = delegate.sizesForMonthSection() // update first. Other variables below depend on it
-        strictBoundaryRulesShouldApply = thereAreHeaders || delegate._cachedConfiguration.hasStrictBoundaries
+        headerSizes = delegate.headerSizesForMonthSection() // update first. Other variables below depend on it
+        footerSizes = delegate.footerSizesForMonthSection() // update first. Other variables below depend on it
+        strictBoundaryRulesShouldApply = thereAreFooters || thereAreHeaders || delegate._cachedConfiguration.hasStrictBoundaries
         numberOfRows = delegate._cachedConfiguration.numberOfRows
         monthMap = delegate.monthMap
         allowsDateCellStretching = delegate.allowsDateCellStretching
@@ -237,6 +245,15 @@ class JTACMonthLayout: UICollectionViewLayout, JTACMonthLayoutProtocol {
                         attributes.append(attrib!)
                     }
                 }
+
+                if thereAreFooters {
+                    let data = footerCache[sectionIndex]!
+
+                    if CGRect(x: data.xOffset, y: data.yOffset, width: data.width, height: data.height).intersects(rect) {
+                        let attrib = layoutAttributesForSupplementaryView(ofKind: UICollectionView.elementKindSectionFooter, at: IndexPath(item: data.item, section: data.section))
+                        attributes.append(attrib!)
+                    }
+                }
                 
                 for val in validSection {
                     if CGRect(x: val.xOffset, y: val.yOffset, width: val.width, height: val.height).intersects(rect) {
@@ -272,7 +289,14 @@ class JTACMonthLayout: UICollectionViewLayout, JTACMonthLayoutProtocol {
     
     func supplementaryAttributeFor(item: Int, section: Int, elementKind: String) -> UICollectionViewLayoutAttributes? {
         var retval: UICollectionViewLayoutAttributes?
-        if let cachedData = headerCache[section] {
+        var elementKindCachedData: (item: Int, section: Int, xOffset: CGFloat, yOffset: CGFloat, width: CGFloat, height: CGFloat)?
+        if elementKind == UICollectionView.elementKindSectionHeader {
+            elementKindCachedData = headerCache[section]
+        } else if elementKind == UICollectionView.elementKindSectionFooter {
+            elementKindCachedData = footerCache[section]
+        }
+
+        if let cachedData = elementKindCachedData {
             
             let attributes = UICollectionViewLayoutAttributes(forSupplementaryViewOfKind: elementKind, with: IndexPath(item: item, section: section))
             attributes.frame = CGRect(x: cachedData.xOffset, y: cachedData.yOffset, width: cachedData.width, height: cachedData.height)
@@ -299,10 +323,12 @@ class JTACMonthLayout: UICollectionViewLayout, JTACMonthLayoutProtocol {
             offSet = cellOfSection.width * 7
         } else {
             offSet = cellOfSection.height * CGFloat(numberOfDaysInSection(section))
-            if
-                thereAreHeaders,
-                let headerHeight = headerCache[section]?.height {
-                    offSet += headerHeight
+            if thereAreHeaders, let headerHeight = headerCache[section]?.height {
+                offSet += headerHeight
+            }
+
+            if thereAreFooters, let footerHeight = footerCache[section]?.height {
+                offSet += footerHeight
             }
         }
         
@@ -337,16 +363,17 @@ class JTACMonthLayout: UICollectionViewLayout, JTACMonthLayoutProtocol {
     }
     
     func determineToApplySupplementaryAttribs(_ item: Int, section: Int)
-        -> (item: Int, section: Int, xOffset: CGFloat, yOffset: CGFloat, width: CGFloat, height: CGFloat)? {
-        var retval:  (item: Int, section: Int, xOffset: CGFloat, yOffset: CGFloat, width: CGFloat, height: CGFloat)?
+        -> (item: Int, section: Int, xOffset: CGFloat, yOffset: CGFloat, width: CGFloat, headerHeight: CGFloat, footerHeight: CGFloat)? {
+        var retval:  (item: Int, section: Int, xOffset: CGFloat, yOffset: CGFloat, width: CGFloat, headerHeight: CGFloat, footerHeight: CGFloat)?
         
         let headerHeight = cachedHeaderHeightForSection(section)
-        
+        let footerHeight = cachedFooterHeightForSection(section)
+
         switch scrollDirection {
         case .horizontal:
             let modifiedSize = sizeForitemAtIndexPath(item, section: section)
             let width = (modifiedSize.width * 7)
-            retval = (item, section, contentWidth + sectionInset.left, sectionInset.top, width , headerHeight)
+            retval = (item, section, contentWidth + sectionInset.left, sectionInset.top, width, headerHeight, footerHeight)
         case .vertical:
             // Use the calculaed header size and force the width
             // of the header to take up 7 columns
@@ -354,11 +381,10 @@ class JTACMonthLayout: UICollectionViewLayout, JTACMonthLayoutProtocol {
             // delegate so much
             fallthrough
         default:
-            let modifiedSize = (width: collectionView!.frame.width, height: headerHeight)
-            retval = (item, section, sectionInset.left, yCellOffset , modifiedSize.width - (sectionInset.left + sectionInset.right), modifiedSize.height)
+            retval = (item, section, sectionInset.left, yCellOffset, collectionView!.frame.width - (sectionInset.left + sectionInset.right), headerHeight, footerHeight)
         }
         
-        if retval?.width == 0, retval?.height == 0 {
+            if retval?.width == 0, retval?.headerHeight == 0, retval?.footerHeight == 0 {
             return nil
         }
         return retval
@@ -366,7 +392,7 @@ class JTACMonthLayout: UICollectionViewLayout, JTACMonthLayoutProtocol {
     
     open override func layoutAttributesForDecorationView(ofKind elementKind: String, at indexPath: IndexPath) -> UICollectionViewLayoutAttributes? {
         if let alreadyCachedVal = decorationCache[indexPath] { return alreadyCachedVal }
-        
+        // TODO: VS
         let retval = UICollectionViewLayoutAttributes(forDecorationViewOfKind: decorationViewID, with: indexPath)
         decorationCache[indexPath] = retval
         retval.frame = delegate.sizeOfDecorationView(indexPath: indexPath)
@@ -417,6 +443,28 @@ class JTACMonthLayout: UICollectionViewLayout, JTACMonthLayoutProtocol {
 
         return retval
     }
+
+    func cachedFooterHeightForSection(_ section: Int) -> CGFloat {
+        var retval: CGFloat = 0
+        // We look for most specific to less specific
+        // Section = specific dates
+        // Months = generic months
+        // Default = final resort
+
+        if let height = footerSizes[section] {
+            retval = height
+        } else {
+            let monthIndex = monthMap[section]!
+            let monthName = monthInfo[monthIndex].name
+            if let height = footerSizes[monthName] {
+                retval = height
+            } else if let height = footerSizes["default"] {
+                retval = height
+            }
+        }
+
+        return retval
+    }
     
     func sizeForitemAtIndexPath(_ item: Int, section: Int) -> (width: CGFloat, height: CGFloat) {
         if let cachedCell  = currentCell,
@@ -442,14 +490,16 @@ class JTACMonthLayout: UICollectionViewLayout, JTACMonthLayoutProtocol {
             } else {
                 size.width = cellSize.width
                 let headerHeight =  strictBoundaryRulesShouldApply ? cachedHeaderHeightForSection(section) : 0
+                let footerHeight =  strictBoundaryRulesShouldApply ? cachedFooterHeightForSection(section) : 0
                 let currentMonth = monthInfo[monthMap[section]!]
                 let recalculatedNumOfRows = allowsDateCellStretching ? CGFloat(currentMonth.maxNumberOfRowsForFull(developerSetRows: numberOfRows)) : CGFloat(maxNumberOfRowsPerMonth)
-                size.height = (collectionView!.frame.height - headerHeight - sectionInset.top - sectionInset.bottom) / recalculatedNumOfRows
+                size.height = (collectionView!.frame.height - headerHeight - footerHeight - sectionInset.top - sectionInset.bottom) / recalculatedNumOfRows
                 currentCell = (section: section, width: size.width, height: size.height)
             }
         } else {
             // Get header size if it already cached
             let headerHeight =  strictBoundaryRulesShouldApply ? cachedHeaderHeightForSection(section) : 0
+            let footerHeight =  strictBoundaryRulesShouldApply ? cachedFooterHeightForSection(section) : 0
             var height: CGFloat = 0
             let currentMonth = monthInfo[monthMap[section]!]
             let numberOfRowsForSection: Int
@@ -459,7 +509,7 @@ class JTACMonthLayout: UICollectionViewLayout, JTACMonthLayoutProtocol {
             } else {
                 numberOfRowsForSection = maxNumberOfRowsPerMonth
             }
-            height      = (collectionView!.frame.height - headerHeight - sectionInset.top - sectionInset.bottom) / CGFloat(numberOfRowsForSection)
+            height      = (collectionView!.frame.height - headerHeight - footerHeight - sectionInset.top - sectionInset.bottom) / CGFloat(numberOfRowsForSection)
             size.height = height > 0 ? height : 0
             currentCell = (section: section, width: size.width, height: size.height)
         }
@@ -484,7 +534,8 @@ class JTACMonthLayout: UICollectionViewLayout, JTACMonthLayoutProtocol {
             fallthrough
         default:
             let headerSizeOfSection = !headerCache.isEmpty ? headerCache[section]!.height : 0
-            return cellCache[section]![0].height * CGFloat(numberOfRowsForMonth(section)) + headerSizeOfSection
+            let footerSizeOfSection = !footerCache.isEmpty ? footerCache[section]!.height : 0
+            return cellCache[section]![0].height * CGFloat(numberOfRowsForMonth(section)) + headerSizeOfSection + footerSizeOfSection
             
         }
     }
@@ -531,6 +582,8 @@ class JTACMonthLayout: UICollectionViewLayout, JTACMonthLayoutProtocol {
         cellCache = aDecoder.value(forKey: "delegate") as! [Int : [(Int, Int, CGFloat, CGFloat, CGFloat, CGFloat)]]
         headerCache = aDecoder.value(forKey: "delegate") as! [Int : (Int, Int, CGFloat, CGFloat, CGFloat, CGFloat)]
         headerSizes = aDecoder.value(forKey: "delegate") as! [AnyHashable:CGFloat]
+        footerCache = aDecoder.value(forKey: "delegate") as! [Int : (Int, Int, CGFloat, CGFloat, CGFloat, CGFloat)]
+        footerSizes = aDecoder.value(forKey: "delegate") as! [AnyHashable:CGFloat]
         super.init(coder: aDecoder)
     }
     
@@ -572,6 +625,7 @@ class JTACMonthLayout: UICollectionViewLayout, JTACMonthLayoutProtocol {
 
     func clearCache() {
         headerCache.removeAll()
+        footerCache.removeAll()
         cellCache.removeAll()
         endOfSectionOffsets.removeAll()
         decorationCache.removeAll()

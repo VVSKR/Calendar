@@ -69,7 +69,10 @@ open class JTACMonthView: UICollectionView {
   
     /// The object that acts as the delegate of the calendar view.
     weak open var calendarDelegate: JTACMonthViewDelegate? {
-        didSet { lastMonthSize = sizesForMonthSection() }
+        didSet {
+            lastMonthHeaderSize = headerSizesForMonthSection()
+            lastMonthFooterSize = footerSizesForMonthSection()
+        }
     }
     
     /// The object that acts as the data source of the calendar view.
@@ -186,7 +189,8 @@ open class JTACMonthView: UICollectionView {
         return self.setupMonthInfoDataForStartAndEndDate()
     }()
     
-    var lastMonthSize: [AnyHashable:CGFloat] = [:]
+    var lastMonthHeaderSize: [AnyHashable:CGFloat] = [:]
+    var lastMonthFooterSize: [AnyHashable:CGFloat] = [:]
     
     var monthMap: [Int: Int] {
         get { return theData.sectionToMonthMap }

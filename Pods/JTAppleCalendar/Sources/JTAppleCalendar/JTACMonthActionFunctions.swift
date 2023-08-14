@@ -242,7 +242,8 @@ extension JTACMonthView {
             let newEndOfMonth   = calendar.endOfMonth(for: newDateBoundary.endDate)
             let oldStartOfMonth = calendar.startOfMonth(for: startDateCache)
             let oldEndOfMonth   = calendar.endOfMonth(for: endDateCache)
-            let newLastMonth    = sizesForMonthSection()
+            let newLastMonthHeaderSize = headerSizesForMonthSection()
+            let newLastMonthFooterSize = footerSizesForMonthSection()
             let calendarLayout  = calendarViewLayout
             
             if
@@ -259,11 +260,13 @@ extension JTACMonthView {
                 minimumInteritemSpacing  != calendarLayout.minimumInteritemSpacing ||
                 minimumLineSpacing       != calendarLayout.minimumLineSpacing ||
                 sectionInset             != calendarLayout.sectionInset ||
-                lastMonthSize            != newLastMonth ||
+                lastMonthHeaderSize      != newLastMonthHeaderSize ||
+                lastMonthFooterSize      != newLastMonthFooterSize ||
                 allowsDateCellStretching != calendarLayout.allowsDateCellStretching ||
                 scrollDirection          != calendarLayout.scrollDirection ||
                 calendarLayout.isDirty {
-                    lastMonthSize = newLastMonth
+                    lastMonthHeaderSize = newLastMonthHeaderSize
+                    lastMonthFooterSize = newLastMonthFooterSize
                     retval = (true, newDateBoundary)
             }
         }

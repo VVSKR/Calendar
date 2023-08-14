@@ -37,11 +37,16 @@ extension JTACMonthLayout {
         for aMonth in monthInfo {
             for numberOfDaysInCurrentSection in aMonth.sections {
                 // Generate and cache the headers
-                if let aHeaderAttr = determineToApplySupplementaryAttribs(0, section: virtualSection) {
-                    headerCache[virtualSection] = aHeaderAttr
+                if let aSupplementaryAttr = determineToApplySupplementaryAttribs(0, section: virtualSection) {
+                    headerCache[virtualSection] = (item: aSupplementaryAttr.item,
+                                                   section: aSupplementaryAttr.section,
+                                                   xOffset: aSupplementaryAttr.xOffset,
+                                                   yOffset: aSupplementaryAttr.yOffset,
+                                                   width: aSupplementaryAttr.width,
+                                                   height: aSupplementaryAttr.headerHeight)
                     if strictBoundaryRulesShouldApply {
-                        contentHeight += aHeaderAttr.height
-                        yCellOffset += aHeaderAttr.height
+                        contentHeight += aSupplementaryAttr.headerHeight
+                        yCellOffset += aSupplementaryAttr.headerHeight
                     }
                 }
                 // Generate and cache the cells
@@ -90,7 +95,21 @@ extension JTACMonthLayout {
                         }
                     }
                 }
+
+                if let aSupplementaryAttr = determineToApplySupplementaryAttribs(0, section: virtualSection) {
+                    footerCache[virtualSection] = (item: aSupplementaryAttr.item,
+                                                   section: aSupplementaryAttr.section,
+                                                   xOffset: aSupplementaryAttr.xOffset,
+                                                   yOffset: aSupplementaryAttr.yOffset,
+                                                   width: aSupplementaryAttr.width,
+                                                   height: aSupplementaryAttr.footerHeight)
+                    if strictBoundaryRulesShouldApply {
+                        contentHeight += aSupplementaryAttr.footerHeight
+                        yCellOffset += aSupplementaryAttr.footerHeight
+                    }
+                }
                 virtualSection += 1
+
             }
         }
         contentWidth = self.collectionView!.bounds.size.width

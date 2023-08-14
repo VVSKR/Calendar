@@ -229,19 +229,27 @@ extension JTACMonthView {
         return retval
     }
     
-    func sizesForMonthSection() -> [AnyHashable:CGFloat] {
+    func headerSizesForMonthSection() -> [AnyHashable:CGFloat] {
+        makeSizesForMonthSection(monthSize: calendarDelegate?.calendarHeaderSizeForMonths(self))
+    }
+
+    func footerSizesForMonthSection() -> [AnyHashable:CGFloat] {
+        makeSizesForMonthSection(monthSize: calendarDelegate?.calendarFooterSizeForMonths(self))
+    }
+
+    private func makeSizesForMonthSection(monthSize: MonthSize?) -> [AnyHashable:CGFloat] {
         var retval: [AnyHashable:CGFloat] = [:]
         guard
-            let headerSizes = calendarDelegate?.calendarSizeForMonths(self),
-            headerSizes.defaultSize > 0 else {
-                return retval
+            let monthSize = monthSize,
+            monthSize.defaultSize > 0 else {
+            return retval
         }
-        
+
         // Build the default
-        retval["default"] = headerSizes.defaultSize
-        
+        retval["default"] = monthSize.defaultSize
+
         // Build the every-month data
-        if let allMonths = headerSizes.months {
+        if let allMonths = monthSize.months {
             for (size, months) in allMonths {
                 for month in months {
                     assert(retval[month] == nil, "You have duplicated months. Please revise your month size data.")
@@ -249,9 +257,9 @@ extension JTACMonthView {
                 }
             }
         }
-        
+
         // Build the specific month data
-        if let specificSections = headerSizes.dates {
+        if let specificSections = monthSize.dates {
             for (size, dateArray) in specificSections {
                 let paths = pathsFromDates(dateArray)
                 for path in paths {

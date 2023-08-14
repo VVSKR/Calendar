@@ -170,24 +170,24 @@ extension JTACMonthView {
     /// Registers a class for use in creating supplementary views for the collection view.
     /// For now, the calendar only supports: 'UICollectionElementKindSectionHeader' for the forSupplementaryViewOfKind(parameter)
     open override func register(_ viewClass: AnyClass?, forSupplementaryViewOfKind elementKind: String, withReuseIdentifier identifier: String) {
-        super.register(viewClass, forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: identifier)
+        super.register(viewClass, forSupplementaryViewOfKind: elementKind, withReuseIdentifier: identifier)
     }
     
     /// Registers a class for use in creating supplementary views for the collection view.
     /// For now, the calendar only supports: 'UICollectionElementKindSectionHeader' for the forSupplementaryViewOfKind(parameter)
     open override func register(_ nib: UINib?, forSupplementaryViewOfKind kind: String, withReuseIdentifier identifier: String) {
-        super.register(nib, forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: identifier)
+        super.register(nib, forSupplementaryViewOfKind: kind, withReuseIdentifier: identifier)
     }
     
     /// Dequeues re-usable calendar cells
-    public func dequeueReusableJTAppleSupplementaryView(withReuseIdentifier identifier: String, for indexPath: IndexPath) -> JTACMonthReusableView {
-        guard let headerView = dequeueReusableSupplementaryView(ofKind: UICollectionView.elementKindSectionHeader,
+    public func dequeueReusableJTAppleSupplementaryView(withReuseIdentifier identifier: String, forSupplementaryViewOfKind kind: String, for indexPath: IndexPath) -> JTACMonthReusableView {
+        guard let supplementaryView = dequeueReusableSupplementaryView(ofKind: kind,
                                                                 withReuseIdentifier: identifier,
                                                                 for: indexPath) as? JTACMonthReusableView else {
-                                                                    developerError(string: "Error initializing Header View with identifier: '\(identifier)'")
+                                                                    developerError(string: "Error initializing SupplementaryView View with identifier: '\(identifier)'")
                                                                     return JTACMonthReusableView()
         }
-        return headerView
+        return supplementaryView
     }
     
     /// Registers a nib for use in creating Decoration views for the collection view.
@@ -433,7 +433,7 @@ extension JTACMonthView {
         
         switch scrollDirection {
         case .horizontal:
-            if calendarViewLayout.thereAreHeaders || _cachedConfiguration.generateOutDates == .tillEndOfGrid {
+            if calendarViewLayout.thereAreHeaders || calendarViewLayout.thereAreFooters || _cachedConfiguration.generateOutDates == .tillEndOfGrid {
                 fixedScrollSize = calendarViewLayout.sizeOfContentForSection(0)
             } else {
                 fixedScrollSize = frame.width

@@ -244,6 +244,8 @@ extension JTACMonthView: UIScrollViewDelegate {
         
         if validElement.representedElementKind == UICollectionView.elementKindSectionHeader {
             elementProperties = calendarViewLayout.headerCache[validElement.indexPath.section]
+        } else if validElement.representedElementKind == UICollectionView.elementKindSectionFooter {
+            elementProperties = calendarViewLayout.footerCache[validElement.indexPath.section]
         } else {
             elementProperties = calendarViewLayout.cachedValue(for: validElement.indexPath.item, section: validElement.indexPath.section)
         }
