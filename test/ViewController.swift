@@ -21,12 +21,26 @@ extension ViewController: JTAppleCalendarViewDataSource {
 extension ViewController: JTAppleCalendarViewDelegate {
     func calendar(_ calendar: JTAppleCalendarView, cellForItemAt date: Date, cellState: CellState, indexPath: IndexPath) -> JTAppleCell {
         let cell = calendar.dequeueReusableJTAppleCell(withReuseIdentifier: "dateCell", for: indexPath) as! DateCell
-        cell.dateLabel.text = cellState.text
+        if cellState.dateBelongsTo == .thisMonth {
+            cell.dateLabel.text = cellState.text
+        }
+
         return cell
     }
     func calendar(_ calendar: JTAppleCalendarView, willDisplay cell: JTAppleCell, forItemAt date: Date, cellState: CellState, indexPath: IndexPath) {
         let cell = cell as! DateCell
         cell.dateLabel.text = cellState.text
+    }
+
+    private func calendar(_ calendar: JTAppleCalendarView, headerViewForDateRange range: (start: Date, end: Date), at indexPath: IndexPath) -> JTACMonthReusableView {
+        let headerUntyped = calendar.dequeueReusableJTAppleSupplementaryView(
+            withReuseIdentifier: HeaderDateCell.reuseIdentifier,
+            for: indexPath
+        )
+        guard let header = headerUntyped as? HeaderDateCell else {
+            return JTACMonthReusableView()
+        }
+        return header
     }
 }
 
