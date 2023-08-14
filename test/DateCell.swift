@@ -34,3 +34,11 @@ class HeaderDateCell: JTACMonthReusableView {
         "HeaderDateCell"
     }
 }
+
+
+class FooterDateCell: JTACMonthReusableView {
+
+    static var reuseIdentifier: String {
+        "FooterDateCell"
+    }
+}
