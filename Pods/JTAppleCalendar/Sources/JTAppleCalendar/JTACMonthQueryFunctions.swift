@@ -1,7 +1,7 @@
 //
-//  InternalQueryFunctions.swift
+//  JTACMonthQueryFunctions.swift
 //
-//  Copyright (c) 2016-2017 JTAppleCalendar (https://github.com/patchthecode/JTAppleCalendar)
+//  Copyright (c) 2016-2020 JTAppleCalendar (https://github.com/patchthecode/JTAppleCalendar)
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,9 @@
 //  THE SOFTWARE.
 //
 
-extension JTAppleCalendarView {
+import UIKit
+
+extension JTACMonthView {
     func validForwardAndBackwordSelectedIndexes(forIndexPath indexPath: IndexPath, restrictToSection: Bool = true) -> (forwardIndex: IndexPath?, backIndex: IndexPath?, set: Set<IndexPath>) {
         var retval: (forwardIndex: IndexPath?, backIndex: IndexPath?, set: Set<IndexPath>) = (forwardIndex: nil, backIndex: nil, set: [])
         if let validForwardIndex = calendarViewLayout.indexPath(direction: .next, of: indexPath.section, item: indexPath.item),
@@ -61,6 +63,7 @@ extension JTAppleCalendarView {
 
         switch scrollingMode {
         case .stopAtEachCalendarFrame, .stopAtEach, .nonStopTo:
+            assert(fixedScrollSize != 0, "You should not try to divide by zero.")
             let frameSection = theTargetContentOffset / fixedScrollSize
             let roundedFrameSection = floor(frameSection)
             if scrollDirection == .horizontal {
@@ -277,7 +280,7 @@ extension JTAppleCalendarView {
     
     func cellStateFromIndexPath(_ indexPath: IndexPath,
                                 withDateInfo info: (date: Date, owner: DateOwner)? = nil,
-                                cell: JTAppleCell? = nil,
+                                cell: JTACDayCell? = nil,
                                 isSelected: Bool? = nil,
                                 selectionType: SelectionType? = nil) -> CellState {
         let validDateInfo: (date: Date, owner: DateOwner)
@@ -311,8 +314,11 @@ extension JTAppleCalendarView {
         let selectedPosition = { [unowned self] () -> SelectionRangePosition in
             let selectedDates = self.selectedDatesSet
             if !selectedDates.contains(date) || selectedDates.isEmpty  { return .none }
-            
-            let validSelectedIndexes = self.validForwardAndBackwordSelectedIndexes(forIndexPath: indexPath)
+          
+            let isLTRDirection = UIView.userInterfaceLayoutDirection(
+            for: self.semanticContentAttribute) == .leftToRight
+          let restrictToSection = self.rangeSelectionMode == .segmented
+          let validSelectedIndexes = self.validForwardAndBackwordSelectedIndexes(forIndexPath: indexPath, restrictToSection: restrictToSection)
             let dateBeforeIsSelected = validSelectedIndexes.backIndex != nil
             let dateAfterIsSelected = validSelectedIndexes.forwardIndex != nil
             
@@ -321,9 +327,9 @@ extension JTAppleCalendarView {
             if dateBeforeIsSelected, dateAfterIsSelected {
                 position = .middle
             } else if !dateBeforeIsSelected, dateAfterIsSelected {
-                position = .left
+                position = isLTRDirection ? .left : .right
             } else if dateBeforeIsSelected, !dateAfterIsSelected {
-                position = .right
+                position = isLTRDirection ? .right : .left
             } else if !dateBeforeIsSelected, !dateAfterIsSelected  {
                 position = .full
             } else {
@@ -452,16 +458,14 @@ extension JTAppleCalendarView {
         
         let rect: CGRect?
         if let offset = offset {
-            rect = CGRect(x: offset.x, y: offset.y, width: frame.width, height: frame.height)
+            rect = CGRect(x: offset.x + 1, y: offset.y + 1, width: frame.width - 2, height: frame.height - 2)
         } else {
             rect = nil
         }
         
         let emptySegment = DateSegmentInfo(indates: [], monthDates: [], outdates: [])
         
-        if !isCalendarLayoutLoaded {
-            return emptySegment
-        }
+        guard calendarLayoutIsLoaded else { return emptySegment }
         
         let cellAttributes = calendarViewLayout.elementsAtRect(excludeHeaders: true, from: rect)
         let indexPaths: [IndexPath] = cellAttributes.map { $0.indexPath }.sorted()

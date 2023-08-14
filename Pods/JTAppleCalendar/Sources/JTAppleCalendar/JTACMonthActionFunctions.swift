@@ -1,7 +1,7 @@
 //
-//  InternalActionFunctions.swift
+//  JTACMonthActionFunctions.swift
 //
-//  Copyright (c) 2016-2017 JTAppleCalendar (https://github.com/patchthecode/JTAppleCalendar)
+//  Copyright (c) 2016-2020 JTAppleCalendar (https://github.com/patchthecode/JTAppleCalendar)
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -22,11 +22,13 @@
 //  THE SOFTWARE.
 //
 
-extension JTAppleCalendarView {
+import UIKit
+
+extension JTACMonthView {
     /// Lays out subviews.
     override open func layoutSubviews() {
         super.layoutSubviews()
-        if !generalDelayedExecutionClosure.isEmpty, isCalendarLayoutLoaded {
+        if !generalDelayedExecutionClosure.isEmpty, calendarLayoutIsLoaded {
             executeDelayedTasks(.general)
         }
     }
@@ -41,9 +43,8 @@ extension JTAppleCalendarView {
         assert(false)
     }
     
-    func setupNewLayout(from oldLayout: JTAppleCalendarLayoutProtocol) {
-        
-        let newLayout = JTAppleCalendarLayout(withDelegate: self)
+    func setupNewLayout(from oldLayout: JTACMonthLayoutProtocol) {
+        let newLayout = JTACMonthLayout(withDelegate: self)
         newLayout.scrollDirection = oldLayout.scrollDirection
         newLayout.sectionInset = oldLayout.sectionInset
         newLayout.minimumInteritemSpacing = oldLayout.minimumInteritemSpacing
@@ -56,11 +57,8 @@ extension JTAppleCalendarView {
         sectionInset = newLayout.sectionInset
         minimumLineSpacing = newLayout.minimumLineSpacing
         minimumInteritemSpacing = newLayout.minimumInteritemSpacing
-        
-        
-        if #available(iOS 9.0, *) {
-            transform.a = semanticContentAttribute == .forceRightToLeft ? -1 : 1
-        }
+
+        transform.a = semanticContentAttribute == .forceRightToLeft ? -1 : 1
         
         super.dataSource = self
         super.delegate = self
@@ -169,13 +167,13 @@ extension JTAppleCalendarView {
     
     func batchReloadIndexPaths(_ indexPaths: [IndexPath]) {
         let visiblePaths = indexPathsForVisibleItems
-        var visibleCellsToReload: [JTAppleCell: IndexPath] = [:]
+        var visibleCellsToReload: [JTACDayCell: IndexPath] = [:]
         
         for path in indexPaths {
             if calendarViewLayout.cachedValue(for: path.item, section: path.section) == nil { continue }
             pathsToReload.insert(path)
             if visiblePaths.contains(path) {
-                visibleCellsToReload[cellForItem(at: path) as! JTAppleCell] = path
+                visibleCellsToReload[cellForItem(at: path) as! JTACDayCell] = path
             }
         }
         

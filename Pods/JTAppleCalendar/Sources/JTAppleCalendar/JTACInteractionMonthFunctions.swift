@@ -1,7 +1,7 @@
 //
-//  UserInteractionFunctions.swift
+//  JTACInteractionMonthFunctions.swift
 //
-//  Copyright (c) 2016-2017 JTAppleCalendar (https://github.com/patchthecode/JTAppleCalendar)
+//  Copyright (c) 2016-2020 JTAppleCalendar (https://github.com/patchthecode/JTAppleCalendar)
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -22,8 +22,9 @@
 //  THE SOFTWARE.
 //
 
+import UIKit
 
-extension JTAppleCalendarView {
+extension JTACMonthView {
     
     /// Returns the cellStatus of a date that is visible on the screen.
     /// If the row and column for the date cannot be found,
@@ -50,13 +51,13 @@ extension JTAppleCalendarView {
     /// - returns:
     ///     - CellState: The state of the found cell
     public func cellStatus(for date: Date) -> CellState? {
-        if !isCalendarLayoutLoaded || isReloadDataInProgress { return nil }
+        if !calendarLayoutIsLoaded || isReloadDataInProgress { return nil }
         // validate the path
         let paths = pathsFromDates([date])
         // Jt101 change this function to also return
         // information like the dateInfoFromPath function
         if paths.isEmpty { return nil }
-        let cell = cellForItem(at: paths[0]) as? JTAppleCell
+        let cell = cellForItem(at: paths[0]) as? JTACDayCell
         let stateOfCell = cellStateFromIndexPath(paths[0], cell: cell)
         return stateOfCell
     }
@@ -66,7 +67,7 @@ extension JTAppleCalendarView {
     /// - returns:
     ///     - CellState: The state of the found cell
     public func cellStatus(for date: Date, completionHandler: @escaping (_ cellStatus: CellState?) ->()) {
-        if !isCalendarLayoutLoaded || isReloadDataInProgress {
+        if !calendarLayoutIsLoaded || isReloadDataInProgress {
             addToDelayedHandlers {[unowned self] in
                 self.cellStatus(for: date, completionHandler: completionHandler)
             }
@@ -104,7 +105,7 @@ extension JTAppleCalendarView {
     ///     - CellState: The state of the found cell
     public func cellStatus(at point: CGPoint) -> CellState? {
         if let indexPath = indexPathForItem(at: point) {
-            let cell = cellForItem(at: indexPath) as? JTAppleCell
+            let cell = cellForItem(at: indexPath) as? JTACDayCell
             return cellStateFromIndexPath(indexPath, cell: cell)
         }
         return nil
@@ -112,6 +113,9 @@ extension JTAppleCalendarView {
     
     /// Deselect all selected dates
     /// - Parameter: this funciton triggers a delegate call by default. Set this to false if you do not want this
+    /// - Parameter keepDeselectionIfMultiSelectionAllowed:
+    ///    if (in range selection) there are 4 dates. -> selected, unselected, selected, selected. (S | U | S | S)
+    ///    Deselecting those 4 dates again would give U | S | U | U. With KeepDeselection, this becomes U | U | U | U
     public func deselectAllDates(triggerSelectionDelegate: Bool = true) {
         deselect(dates: selectedDates, triggerSelectionDelegate: triggerSelectionDelegate)
     }
@@ -119,9 +123,16 @@ extension JTAppleCalendarView {
     /// Deselect dates
     /// - Parameter: Dates - The dates to deselect
     /// - Parameter: triggerSelectionDelegate - this funciton triggers a delegate call by default. Set this to false if you do not want this
-    public func deselect(dates: [Date], triggerSelectionDelegate: Bool = true) {
+    /// - Parameter keepDeselectionIfMultiSelectionAllowed:
+    ///    if (in range selection) there are 4 dates. -> selected, unselected, selected, selected. (S | U | S | S)
+    ///    Deselecting those 4 dates again would give U | S | U | U. With KeepDeselection, this becomes U | U | U | U
+    public func deselect(dates: [Date], triggerSelectionDelegate: Bool = true, keepDeselectionIfMultiSelectionAllowed: Bool = false) {
         if allowsMultipleSelection {
-            selectDates(dates, triggerSelectionDelegate: triggerSelectionDelegate)
+            var filteredDates: [Date] = dates
+            if keepDeselectionIfMultiSelectionAllowed {
+                filteredDates = dates.filter { self.selectedDatesSet.contains(calendar.startOfDay(for: $0)) }
+            }
+            selectDates(filteredDates, triggerSelectionDelegate: triggerSelectionDelegate, keepSelectionIfMultiSelectionAllowed: false)
         } else {
             let paths = pathsFromDates(dates)
             guard !paths.isEmpty else { return }
@@ -134,7 +145,7 @@ extension JTAppleCalendarView {
     public func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator, anchorDate: Date?) {
         DispatchQueue.main.async { [weak self] in
             guard let _self = self else { return }
-            _self.reloadData(withanchor: anchorDate)
+            _self.reloadData(withAnchor: anchorDate)
         }
     }
     
@@ -169,12 +180,12 @@ extension JTAppleCalendarView {
     }
     
     /// Dequeues re-usable calendar cells
-    public func dequeueReusableJTAppleSupplementaryView(withReuseIdentifier identifier: String, for indexPath: IndexPath) -> JTAppleCollectionReusableView {
+    public func dequeueReusableJTAppleSupplementaryView(withReuseIdentifier identifier: String, for indexPath: IndexPath) -> JTACMonthReusableView {
         guard let headerView = dequeueReusableSupplementaryView(ofKind: UICollectionView.elementKindSectionHeader,
                                                                 withReuseIdentifier: identifier,
-                                                                for: indexPath) as? JTAppleCollectionReusableView else {
+                                                                for: indexPath) as? JTACMonthReusableView else {
                                                                     developerError(string: "Error initializing Header View with identifier: '\(identifier)'")
-                                                                    return JTAppleCollectionReusableView()
+                                                                    return JTACMonthReusableView()
         }
         return headerView
     }
@@ -188,10 +199,10 @@ extension JTAppleCalendarView {
         calendarViewLayout.register(className, forDecorationViewOfKind: decorationViewID)
     }
     /// Dequeues a reuable calendar cell
-    public func dequeueReusableJTAppleCell(withReuseIdentifier identifier: String, for indexPath: IndexPath) -> JTAppleCell {
-        guard let cell = dequeueReusableCell(withReuseIdentifier: identifier, for: indexPath) as? JTAppleCell else {
+    public func dequeueReusableJTAppleCell(withReuseIdentifier identifier: String, for indexPath: IndexPath) -> JTACDayCell {
+        guard let cell = dequeueReusableCell(withReuseIdentifier: identifier, for: indexPath) as? JTACDayCell else {
             developerError(string: "Error initializing Cell View with identifier: '\(identifier)'")
-            return JTAppleCell()
+            return JTACDayCell()
         }
         return cell
     }
@@ -203,10 +214,10 @@ extension JTAppleCalendarView {
     /// - Parameter animation: Scroll is animated if this is set to true
     /// - Parameter completionHandler: This closure will run after
     ///                                the reload is complete
-    public func reloadData(withanchor date: Date? = nil, completionHandler: (() -> Void)? = nil) {
+    public func reloadData(withAnchor date: Date? = nil, completionHandler: (() -> Void)? = nil) {
         if isReloadDataInProgress { return }
         if isScrollInProgress {
-            generalDelayedExecutionClosure.append {[unowned self] in
+            scrollDelayedExecutionClosure.append {[unowned self] in
                 self.reloadData(completionHandler: completionHandler)
             }
             return
@@ -282,11 +293,16 @@ extension JTAppleCalendarView {
     }
     
     /// Deselect all selected dates within a range
-    public func deselectDates(from start: Date, to end: Date? = nil, triggerSelectionDelegate: Bool = true) {
+    /// - Parameter: start - Start of date range to deselect
+    /// - Parameter: end of date range to deselect
+    /// - Parameter keepDeselectionIfMultiSelectionAllowed:
+    ///    if (in range selection) there are 4 dates. -> selected, unselected, selected, selected. (S | U | S | S)
+    ///    Deselecting those 4 dates again would give U | S | U | U. With KeepDeselection, this becomes U | U | U | U
+    public func deselectDates(from start: Date, to end: Date? = nil, triggerSelectionDelegate: Bool = true, keepDeselectionIfMultiSelectionAllowed: Bool = false) {
         if selectedDates.isEmpty { return }
         let end = end ?? selectedDates.last!
         let dates = selectedDates.filter { $0 >= start && $0 <= end }
-        deselect(dates: dates, triggerSelectionDelegate: triggerSelectionDelegate)
+        deselect(dates: dates, triggerSelectionDelegate: triggerSelectionDelegate, keepDeselectionIfMultiSelectionAllowed: keepDeselectionIfMultiSelectionAllowed)
         
     }
     
@@ -302,7 +318,7 @@ extension JTAppleCalendarView {
     ///    Selecting those 4 dates again would give U | S | U | U. With KeepSelection, this becomes S | S | S | S
     public func selectDates(_ dates: [Date], triggerSelectionDelegate: Bool = true, keepSelectionIfMultiSelectionAllowed: Bool = false) {
         if dates.isEmpty { return }
-        if (!isCalendarLayoutLoaded || isReloadDataInProgress) {
+        if (!calendarLayoutIsLoaded || isReloadDataInProgress) {
             // If the calendar is not yet fully loaded.
             // Add the task to the delayed queue
             generalDelayedExecutionClosure.append {[unowned self] in
@@ -512,6 +528,7 @@ extension JTAppleCalendarView {
                 self.scrollToDate(date,
                                   triggerScrollToDateDelegate: triggerScrollToDateDelegate,
                                   animateScroll: animateScroll,
+                                  preferredScrollPosition: preferredScrollPosition,
                                   extraAddedOffset: extraAddedOffset,
                                   completionHandler: completionHandler)
             }
@@ -531,16 +548,21 @@ extension JTAppleCalendarView {
         if retrievedPathsFromDates.isEmpty { return }
         let sectionIndexPath = pathsFromDates([date])[0]
         
-        guard let point = targetPointForItemAt(indexPath: sectionIndexPath) else {
-            assert(false, "Could not determine CGPoint. This is an error. contact developer on github. In production, there will not be a crash, but scrolling will not occur")
-            return
+        if scrollingMode == .none {
+            self.scrollToItem(at: sectionIndexPath,
+                              at: preferredScrollPosition ?? (scrollDirection == .horizontal ? .left : .top),
+                              animated: animateScroll)
+        } else {
+            guard let point = targetPointForItemAt(indexPath: sectionIndexPath) else {
+                assert(false, "Could not determine CGPoint. This is an error. contact developer on github. In production, there will not be a crash, but scrolling will not occur")
+                return
+            }
+            scrollTo(point: point,
+                     triggerScrollToDateDelegate: triggerScrollToDateDelegate,
+                     isAnimationEnabled: animateScroll,
+                     extraAddedOffset: extraAddedOffset,
+                     completionHandler: completionHandler)
         }
-
-        scrollTo(point: point,
-                 triggerScrollToDateDelegate: triggerScrollToDateDelegate,
-                 isAnimationEnabled: animateScroll,
-                 extraAddedOffset: extraAddedOffset,
-                 completionHandler: completionHandler)
     }
     
     /// Scrolls the calendar view to the start of a section view header.
